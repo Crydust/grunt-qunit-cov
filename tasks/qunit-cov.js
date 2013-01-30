@@ -59,7 +59,7 @@ module.exports = function(grunt)
     }
 
     // Handle methods passed from PhantomJS, including QUnit hooks.
-    var phantomHandlers = 
+    var phantomHandlers =
     {
         // QUnit hooks.
         moduleStart: function(name)
@@ -97,12 +97,12 @@ module.exports = function(grunt)
                     grunt.log.error();
                     logFailedAssertions();
                 }
-                else 
+                else
                 {
                     grunt.log.write('F'.red);
                 }
             }
-            else 
+            else
             {
                 grunt.verbose.ok().or.write('.');
             }
@@ -113,7 +113,7 @@ module.exports = function(grunt)
             status.passed += passed;
             status.total += total;
             status.duration += duration;
-          
+
             if( coverage )
             {
                 for(var key in coverage)
@@ -126,7 +126,7 @@ module.exports = function(grunt)
                     {
                         var globalCoverage = status.coverage[key];
                         var localCoverage = coverage[key];
-                        
+
                         for(var i = 0; i < localCoverage.length; i++)
                         {
                             if(localCoverage[i] !== null && globalCoverage[i] !== null)
@@ -136,16 +136,16 @@ module.exports = function(grunt)
                         }
                     }
                 }
-            }   
-      
+            }
+
             // Print assertion errors here, if verbose mode is disabled.
             if (!grunt.option('verbose'))
             {
-                if (failed > 0) 
+                if (failed > 0)
                 {
                     grunt.log.writeln();
                     logFailedAssertions();
-                } 
+                }
                 else
                 {
                     grunt.log.ok();
@@ -153,7 +153,7 @@ module.exports = function(grunt)
             }
         },
         // Error handlers.
-        done_fail: function(url) 
+        done_fail: function(url)
         {
             grunt.verbose.write('Running PhantomJS...').or.write('...');
             grunt.log.error();
@@ -186,7 +186,7 @@ module.exports = function(grunt)
         testFiles = this.data.testFiles;
         baseDir = this.data.baseDir;
         // Reset status.
-        
+
         if(fs.existsSync(outDir))
         {
             wrench.rmdirSyncRecursive(outDir);
@@ -202,7 +202,7 @@ module.exports = function(grunt)
                 fs.mkdirSync(outDir + '/in/' + baseDir + '/');
             }
         }
-        
+
         for(var i = 0; i < depDirs.length; i++)
         {
             var dir = depDirs[i];
@@ -210,9 +210,9 @@ module.exports = function(grunt)
             wrench.mkdirSyncRecursive(outDir + '/in/' + dir);
             wrench.copyDirSyncRecursive(dir, outDir + '/in/' + dir, {preserve: true});
         }
-    
+
         grunt.log.write('Instrumenting folder \'' + srcDir + '\' to ' + outDir + '/in/' + srcDir + '...');
-            
+
         jscoverage(
         {
             code: 90,
@@ -223,9 +223,9 @@ module.exports = function(grunt)
             done: function(err)
             {
                 grunt.log.ok();
-               
+
                 // Get files as URLs.
-                var urls = grunt.file.expandFileURLs(outDir + '/in/' + testFiles);
+                var urls = grunt.file.expand(outDir + '/in/' + testFiles);
 
                 // Process each filepath in-order.
                 grunt.util.async.forEachSeries(urls, function(url, next)
@@ -289,7 +289,7 @@ module.exports = function(grunt)
                             cleanup();
                             next();
                         }
-                        else 
+                        else
                         {
                             // Update n so previously processed lines are ignored.
                             n = lines.length;
@@ -297,7 +297,7 @@ module.exports = function(grunt)
                             id = setTimeout(loopy, 100);
                         }
                     }());
-                    
+
                     // Launch PhantomJS.
                     phantomjs(
                     {
@@ -319,19 +319,19 @@ module.exports = function(grunt)
                         }
                     });
                 },
-            
+
                 function(err)
                 {
                     // All tests have been run.
                     PrintCoverage(status.coverage, minimum, srcDir, outDir);
-                    
+
                     // Log results.
                     if (status.failed > 0)
                     {
                         grunt.warn(status.failed + '/' + status.total + ' assertions failed (' +
                         status.duration + 'ms)', Math.min(99, 90 + status.failed));
                     }
-                    else 
+                    else
                     {
                         grunt.verbose.writeln();
                         grunt.log.ok(status.total + ' assertions passed (' + status.duration + 'ms)');
@@ -351,24 +351,25 @@ module.exports = function(grunt)
     {
         var totalCovered = 0, totalUncovered = 0;
         var coverageBase = grunt.file.read(getFile('qunit-cov/cov.tmpl')).toString();
-        
-        var filesCoverage = {};        
-        
-        var files = grunt.file.expandFiles(srcDir + '/**/*.js');
-            
+
+        var filesCoverage = {};
+
+        var files = grunt.file.expand(srcDir + '/**/*.js');
+
         for(var i=0; i < files.length; i++)
         {
             var file = files[i];
             var relativeFile = file.substr(srcDir.length + 1);
-            
+
             grunt.log.writeln('reading ' + file);
-            
+
             var colorized = '';
             var covered = 0;
             var uncovered = 0;
-            var lineCoverage = coverageInfo[relativeFile];
+            var absoluteFile = path.resolve(file);
+            var lineCoverage = coverageInfo[absoluteFile];
             var fileLines = grunt.file.read(file).split(/\r?\n/);
-            
+
             for (var idx=0; idx < fileLines.length; idx++)
             {
                 var hitmiss = ' nottested';
@@ -399,37 +400,37 @@ module.exports = function(grunt)
                 colorized += '<div class="code' + hitmiss + '">' + htmlLine + '</div>\n';
                 filesCoverage[relativeFile] = { covered: covered, uncovered: uncovered };
             }
-            
+
             grunt.log.writeln(covered + " - " + uncovered);
-            
-            colorized = coverageBase.replace('COLORIZED_LINE_HTML', colorized);            
+
+            colorized = coverageBase.replace('COLORIZED_LINE_HTML', colorized);
             var coverageOutputFile = outDir + '/out/' + relativeFile + '.html';
             grunt.file.write(coverageOutputFile, colorized);
-            
+
             totalCovered += covered;
             totalUncovered += uncovered;
-            
+
             if (grunt.option('verbose'))
             {
-                grunt.log.writeln('Coverage for ' + key + ' in ' + coverageOutputFile);            
+                grunt.log.writeln('Coverage for ' + key + ' in ' + coverageOutputFile);
             }
         }
         var totalPercent = totalCovered / (totalCovered + totalUncovered);
         grunt.log.writeln(totalCovered + " - " + totalUncovered);
-        
+
         var html = '<h2>Total Coverage</h2><table>';
-        html += printCoverageLine('', totalCovered, totalUncovered, true);       
+        html += printCoverageLine('', totalCovered, totalUncovered, true);
         html += '</table>';
-        
+
         html += '<h2>Detailed Coverage</h2><table>';
-        
+
         var covHtml = '';
         var uncovHtml = '';
-        
+
         for(var key in filesCoverage)
         {
             var fileCoverage = filesCoverage[key];
-            
+
             if(fileCoverage.covered == 0 && fileCoverage.uncovered == 0)
             {
                 uncovHtml+= printCoverageLine(key, fileCoverage.covered, fileCoverage.uncovered);
@@ -440,23 +441,23 @@ module.exports = function(grunt)
             }
         }
         html += covHtml + '</table><table><h2>Uncovered Files</h2>' + uncovHtml + '</table>';
-        
 
-        
+
+
         grunt.file.write(outDir + '/out/coverage.html', html);
-        
-        
-        grunt.log.writeln('Coverage in ' + parseInt(totalPercent*100, 10) + '%');
+
+
+        grunt.log.writeln('Coverage is ' + parseInt(totalPercent*100, 10) + '%');
         if( totalPercent < minimum)
         {
-            grunt.warn('Error: Coverage don\'t reach ' + (minimum*100) + '%');  
+            grunt.warn('Coverage doesn\'t reach ' + (minimum*100) + '%');
         }
     }
-    
+
     function printCoverageLine(file, covered, uncovered, doNotShowLink)
     {
         var percent = parseInt(100 * covered / (covered + uncovered), 10);
-        
+
         var link = file;
         if(!doNotShowLink)
         {
@@ -468,7 +469,4 @@ module.exports = function(grunt)
         }
         return '<tr><td width="150"><table width="100%" border="0" cellpadding="0" cellspacing="0"><tbody><tr><td width="' + percent + '%" bgcolor="#00CC33">&nbsp;</td><td width=" '+ 100 + percent + '%" bgcolor="#990000"></td></tr></tbody></table></td><td width="25" align="right"><strong>' + percent+ '%</strong></td><td>' + link + '</td></tr>';
     }
-
-
-
 }
