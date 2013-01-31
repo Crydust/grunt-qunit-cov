@@ -12,8 +12,7 @@ var fs = require('fs');
 var path = require('path');
 var wrench = require('wrench');
 
-module.exports = function(grunt)
-{
+module.exports = function(grunt) {
     var status = {failed: 0, passed: 0, total: 0, duration: 0, coverage: {}};
 
     // Keep track of the last-started module, test and status.
@@ -30,28 +29,23 @@ module.exports = function(grunt)
     }
 
     // Allow an error message to retain its color when split across multiple lines.
-    function formatMessage(str)
-    {
+    function formatMessage(str) {
         return String(str).split('\n').map(function(s) { return s.magenta; }).join('\n');
     }
 
     // Keep track of failed assertions for pretty-printing.
     var failedAssertions = [];
-    function logFailedAssertions()
-    {
+    function logFailedAssertions() {
         var assertion;
         // Print each assertion error.
-        while (assertion = failedAssertions.shift())
-        {
+        while (assertion = failedAssertions.shift()) {
             grunt.verbose.or.error(assertion.testName);
             grunt.log.error('Message: ' + formatMessage(assertion.message));
-            if (assertion.actual !== assertion.expected)
-            {
+            if (assertion.actual !== assertion.expected) {
                 grunt.log.error('Actual: ' + formatMessage(assertion.actual));
                 grunt.log.error('Expected: ' + formatMessage(assertion.expected));
             }
-            if (assertion.source)
-            {
+            if (assertion.source) {
                 grunt.log.error(assertion.source.replace(/ {4}(at)/g, '  $1'));
             }
             grunt.log.writeln();
@@ -59,78 +53,65 @@ module.exports = function(grunt)
     }
 
     // Handle methods passed from PhantomJS, including QUnit hooks.
-    var phantomHandlers =
-    {
+    var phantomHandlers = {
+
+        testResultXML: '',
         // QUnit hooks.
-        moduleStart: function(name)
-        {
+        moduleStart: function(name) {
             unfinished[name] = true;
             currentModule = name;
         },
-        moduleDone: function(name, failed, passed, total)
-        {
+
+        moduleDone: function(name, failed, passed, total) {
             delete unfinished[name];
         },
-        log: function(result, actual, expected, message, source)
-        {
-            if (!result)
-            {
+
+        log: function(result, actual, expected, message, source) {
+            if (!result) {
                 failedAssertions.push({
                     actual: actual, expected: expected, message: message, source: source,
                     testName: currentTest
                 });
             }
         },
-        testStart: function(name)
-        {
+
+        testStart: function(name) {
             currentTest = (currentModule ? currentModule + ' - ' : '') + name;
             grunt.verbose.write(currentTest + '...');
         },
-        testDone: function(name, failed, passed, total)
-        {
+
+        testDone: function(name, failed, passed, total) {
             // Log errors if necessary, otherwise success.
-            if (failed > 0)
-            {
+            if (failed > 0) {
                 // list assertions
-                if (grunt.option('verbose'))
-                {
+                if (grunt.option('verbose')) {
                     grunt.log.error();
                     logFailedAssertions();
                 }
-                else
-                {
+                else {
                     grunt.log.write('F'.red);
                 }
             }
-            else
-            {
+            else {
                 grunt.verbose.ok().or.write('.');
             }
         },
-        done: function(failed, passed, total, duration, coverage)
-        {
+        done: function(failed, passed, total, duration, coverage) {
             status.failed += failed;
             status.passed += passed;
             status.total += total;
             status.duration += duration;
 
-            if( coverage )
-            {
-                for(var key in coverage)
-                {
-                    if(!status.coverage[key])
-                    {
+            if( coverage ) {
+                for(var key in coverage) {
+                    if(!status.coverage[key]) {
                         status.coverage[key] = coverage[key];
-                    }
-                    else
-                    {
+                    } else {
                         var globalCoverage = status.coverage[key];
                         var localCoverage = coverage[key];
 
-                        for(var i = 0; i < localCoverage.length; i++)
-                        {
-                            if(localCoverage[i] !== null && globalCoverage[i] !== null)
-                            {
+                        for(var i = 0; i < localCoverage.length; i++) {
+                            if(localCoverage[i] !== null && globalCoverage[i] !== null) {
                                 globalCoverage[i] += localCoverage[i];
                             }
                         }
@@ -139,28 +120,22 @@ module.exports = function(grunt)
             }
 
             // Print assertion errors here, if verbose mode is disabled.
-            if (!grunt.option('verbose'))
-            {
-                if (failed > 0)
-                {
+            if (!grunt.option('verbose')) {
+                if (failed > 0) {
                     grunt.log.writeln();
                     logFailedAssertions();
-                }
-                else
-                {
+                } else {
                     grunt.log.ok();
                 }
             }
         },
         // Error handlers.
-        done_fail: function(url)
-        {
+        done_fail: function(url) {
             grunt.verbose.write('Running PhantomJS...').or.write('...');
             grunt.log.error();
             grunt.warn('PhantomJS unable to load "' + url + '" URI.', 90);
         },
-        done_timeout: function()
-        {
+        done_timeout: function() {
             grunt.log.writeln();
             grunt.warn('PhantomJS timed out, possibly due to a missing QUnit start() call.', 90);
         },
@@ -174,37 +149,30 @@ module.exports = function(grunt)
     // TASKS
     // ==========================================================================
 
-    grunt.registerMultiTask('qunit-cov', 'Run QUnit unit tests in a headless PhantomJS instance.', function()
-    {
+    grunt.registerMultiTask('qunit-cov', 'Run QUnit unit tests in a headless PhantomJS instance.', function() {
         // This task is asynchronous.
-        var done = this.async();
-
-        minimum = this.data.minimum ? this.data.minimum : 0.8;
-        srcDir = this.data.srcDir;
-        outDir = this.data.outDir;
-        depDirs = this.data.depDirs;
-        testFiles = this.data.testFiles;
-        baseDir = this.data.baseDir;
+        var done = this.async(),
+            minimum = this.data.minimum ? this.data.minimum : 0.8,
+            srcDir = this.data.srcDir,
+            outDir = this.data.outDir,
+            depDirs = this.data.depDirs,
+            testFiles = this.data.testFiles,
+            baseDir = this.data.baseDir;
         // Reset status.
-
-        if(fs.existsSync(outDir))
-        {
+        if(fs.existsSync(outDir)) {
             wrench.rmdirSyncRecursive(outDir);
         }
-        if(!fs.existsSync(outDir))
-        {
+        if(!fs.existsSync(outDir)) {
             fs.mkdirSync(outDir);
         }
-        if(!fs.existsSync(outDir + '/in/'))
-        {
+        if(!fs.existsSync(outDir + '/in/')) {
             fs.mkdirSync(outDir + '/in/');
             if(baseDir) {
                 fs.mkdirSync(outDir + '/in/' + baseDir + '/');
             }
         }
 
-        for(var i = 0; i < depDirs.length; i++)
-        {
+        for(var i = 0; i < depDirs.length; i++) {
             var dir = depDirs[i];
             grunt.verbose.writeln('Copy dir ' + dir + ' to ' + outDir + '/in/' + dir);
             wrench.mkdirSyncRecursive(outDir + '/in/' + dir);
@@ -213,30 +181,26 @@ module.exports = function(grunt)
 
         grunt.log.write('Instrumenting folder \'' + srcDir + '\' to ' + outDir + '/in/' + srcDir + '...');
 
-        jscoverage(
-        {
+        jscoverage({
             code: 90,
             args: [
                     srcDir,
                     outDir + '/in/' + srcDir
                 ],
-            done: function(err)
-            {
+            done: function(err) {
                 grunt.log.ok();
 
                 // Get files as URLs.
                 var urls = grunt.file.expand(outDir + '/in/' + testFiles);
 
                 // Process each filepath in-order.
-                grunt.util.async.forEachSeries(urls, function(url, next)
-                {
+                grunt.util.async.forEachSeries(urls, function(url, next) {
                     var basename = path.basename(url);
                     grunt.verbose.subhead('Testing ' + basename).or.write('Testing ' + basename);
 
                     // Create temporary file to be used for grunt-phantom communication.
                     var tempfile = outDir + '/out/out.temp';
-                    if(fs.existsSync(tempfile))
-                    {
+                    if(fs.existsSync(tempfile)) {
                         fs.unlinkSync(tempfile);
                     }
                     grunt.file.write(tempfile, "");
@@ -249,8 +213,7 @@ module.exports = function(grunt)
                     currentModule = null;
 
                     // Clean up.
-                    function cleanup()
-                    {
+                    function cleanup() {
                         clearTimeout(id);
                     }
 
@@ -258,8 +221,7 @@ module.exports = function(grunt)
                     // the results are written as JSON to a temporary file. This polling loop
                     // checks that file for new lines, and for each one parses its JSON and
                     // executes the corresponding method with the specified arguments.
-                    (function loopy()
-                    {
+                    (function loopy() {
                         // Disable logging temporarily.
                         grunt.log.muted = true;
                         // Read the file, splitting lines on \n, and removing a trailing line.
@@ -267,14 +229,12 @@ module.exports = function(grunt)
                         // Re-enable logging.
                         grunt.log.muted = false;
                         // Iterate over all lines that haven't already been processed.
-                        var done = lines.slice(n).some(function(line)
-                        {
+                        var done = lines.slice(n).some(function(line) {
                             // Get args and method.
                             var args = JSON.parse(line);
                             var method = args.shift();
                             // Execute method if it exists.
-                            if (phantomHandlers[method])
-                            {
+                            if (phantomHandlers[method]) {
                                 phantomHandlers[method].apply(null, args);
                             }
                             // If the method name started with test, return true. Because the
@@ -283,14 +243,11 @@ module.exports = function(grunt)
                             return (/^done/).test(method);
                         });
 
-                        if (done)
-                        {
+                        if (done) {
                             // All done.
                             cleanup();
                             next();
-                        }
-                        else
-                        {
+                        } else {
                             // Update n so previously processed lines are ignored.
                             n = lines.length;
                             // Check back in a little bit.
@@ -299,8 +256,7 @@ module.exports = function(grunt)
                     }());
 
                     // Launch PhantomJS.
-                    phantomjs(
-                    {
+                    phantomjs({
                         code: 90,
                         args: [
                                 getFile('qunit-cov/phantom.js'),
@@ -309,10 +265,8 @@ module.exports = function(grunt)
                                 url,
                                 '--config=' + getFile('qunit-cov/phantom.json')
                             ],
-                        done: function(err)
-                        {
-                            if (err)
-                            {
+                        done: function(err) {
+                            if (err) {
                                 cleanup();
                                 done();
                             }
@@ -320,19 +274,18 @@ module.exports = function(grunt)
                     });
                 },
 
-                function(err)
-                {
+                function(err) {
                     // All tests have been run.
-                    PrintCoverage(status.coverage, minimum, srcDir, outDir);
+                    var content = JSON.stringify(status);
+                    var coverageOutputFile = outDir + '/in/Chart/jscoverage.json';
+                    grunt.file.write(coverageOutputFile, content);
+                    printCoverage(status.coverage, minimum, srcDir, outDir);
 
                     // Log results.
-                    if (status.failed > 0)
-                    {
+                    if (status.failed > 0) {
                         grunt.warn(status.failed + '/' + status.total + ' assertions failed (' +
                         status.duration + 'ms)', Math.min(99, 90 + status.failed));
-                    }
-                    else
-                    {
+                    } else {
                         grunt.verbose.writeln();
                         grunt.log.ok(status.total + ' assertions passed (' + status.duration + 'ms)');
                     }
@@ -347,17 +300,15 @@ module.exports = function(grunt)
     // HELPERS
     // ==========================================================================
 
-    function PrintCoverage(coverageInfo, minimum, srcDir, outDir)
-    {
+    function printCoverage(coverageInfo, minimum, srcDir, outDir) {
         var totalCovered = 0, totalUncovered = 0;
         var coverageBase = grunt.file.read(getFile('qunit-cov/cov.tmpl')).toString();
 
         var filesCoverage = {};
 
         var files = grunt.file.expand(srcDir + '/**/*.js');
-
-        for(var i=0; i < files.length; i++)
-        {
+        var classes = '<classes>';
+        for(var i=0; i < files.length; i++) {
             var file = files[i];
             var relativeFile = file.substr(srcDir.length + 1);
 
@@ -369,30 +320,24 @@ module.exports = function(grunt)
             var absoluteFile = path.resolve(file);
             var lineCoverage = coverageInfo[absoluteFile];
             var fileLines = grunt.file.read(file).split(/\r?\n/);
-
-            for (var idx=0; idx < fileLines.length; idx++)
-            {
+            var lines = '<lines>';
+            for (var idx=0; idx < fileLines.length; idx++) {
                 var hitmiss = ' nottested';
-                if(lineCoverage)
-                {
+                if(lineCoverage) {
                     //+1: coverage lines count from 1.
                     var cvg = lineCoverage[idx + 1];
                     var hitmiss = '';
-                    if (typeof cvg === 'number')
-                    {
-                        if( cvg > 0 )
-                        {
+                    if (typeof cvg === 'number') {
+                        if( cvg > 0 ) {
                             hitmiss = ' hit';
                             covered++;
-                        }
-                        else
-                        {
+                        } else {
                             hitmiss = ' miss';
                             uncovered++;
                         }
+                        lines += '<line number="' + (idx + 1) + '" hits="' + cvg + '" branch="false" />';
                     }
-                    else
-                    {
+                    else {
                         hitmiss = ' undef';
                     }
                 }
@@ -400,6 +345,7 @@ module.exports = function(grunt)
                 colorized += '<div class="code' + hitmiss + '">' + htmlLine + '</div>\n';
                 filesCoverage[relativeFile] = { covered: covered, uncovered: uncovered };
             }
+            lines += '</lines>'
 
             grunt.log.writeln(covered + " - " + uncovered);
 
@@ -410,12 +356,23 @@ module.exports = function(grunt)
             totalCovered += covered;
             totalUncovered += uncovered;
 
-            if (grunt.option('verbose'))
-            {
+            if (grunt.option('verbose')) {
                 grunt.log.writeln('Coverage for ' + key + ' in ' + coverageOutputFile);
             }
+            var classCoverage = covered / (covered + uncovered);
+            var clazz = '<class name="' + file + '" filename="' + file + '" line-rate="' + classCoverage + '" branch-rate="0.0" complexity="0.0">' + lines + '</class>';
+            classes += clazz;
         }
+        classes += '</classes>';
         var totalPercent = totalCovered / (totalCovered + totalUncovered);
+        var packages = '<packages><package name="" line-rate="' + totalPercent + '" branch-rate="0.0" complexity="0.0">';
+        packages += classes;
+        packages += '</package></packages>';
+        var sources = '<sources><source>' + srcDir + '</source></sources>';
+        var coverage = '<coverage>' + sources + packages + '</coverage>';
+        var documentContent = '<?xml version="1.0"?>\n<!DOCTYPE coverage SYSTEM "http://cobertura.sourceforge.net/xml/coverage-03.dtd">\n' + coverage;
+        var coberturaFile = outDir + '/out/cobertura.xml';
+        grunt.file.write(coberturaFile, documentContent);
         grunt.log.writeln(totalCovered + " - " + totalUncovered);
 
         var html = '<h2>Total Coverage</h2><table>';
@@ -427,16 +384,12 @@ module.exports = function(grunt)
         var covHtml = '';
         var uncovHtml = '';
 
-        for(var key in filesCoverage)
-        {
+        for(var key in filesCoverage) {
             var fileCoverage = filesCoverage[key];
 
-            if(fileCoverage.covered == 0 && fileCoverage.uncovered == 0)
-            {
+            if(fileCoverage.covered == 0 && fileCoverage.uncovered == 0) {
                 uncovHtml+= printCoverageLine(key, fileCoverage.covered, fileCoverage.uncovered);
-            }
-            else
-            {
+            } else {
                 covHtml+= printCoverageLine(key, fileCoverage.covered, fileCoverage.uncovered);
             }
         }
@@ -448,23 +401,19 @@ module.exports = function(grunt)
 
 
         grunt.log.writeln('Coverage is ' + parseInt(totalPercent*100, 10) + '%');
-        if( totalPercent < minimum)
-        {
+        if( totalPercent < minimum) {
             grunt.warn('Coverage doesn\'t reach ' + (minimum*100) + '%');
         }
     }
 
-    function printCoverageLine(file, covered, uncovered, doNotShowLink)
-    {
+    function printCoverageLine(file, covered, uncovered, doNotShowLink) {
         var percent = parseInt(100 * covered / (covered + uncovered), 10);
 
         var link = file;
-        if(!doNotShowLink)
-        {
+        if(!doNotShowLink) {
             link = '<a href="' + file + '.html">' + file +'</a>';
         }
-        if( covered == 0 && uncovered == 0 )
-        {
+        if( covered == 0 && uncovered == 0 ) {
             return '<tr><td width="150" bgcolor="#990000"></td><td width="right" align="left"><strong>0%</strong></td><td>' + link +'</td></tr>';
         }
         return '<tr><td width="150"><table width="100%" border="0" cellpadding="0" cellspacing="0"><tbody><tr><td width="' + percent + '%" bgcolor="#00CC33">&nbsp;</td><td width=" '+ 100 + percent + '%" bgcolor="#990000"></td></tr></tbody></table></td><td width="25" align="right"><strong>' + percent+ '%</strong></td><td>' + link + '</td></tr>';
