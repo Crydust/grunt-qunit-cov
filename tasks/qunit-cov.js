@@ -317,7 +317,9 @@ module.exports = function(grunt) {
             var colorized = '';
             var covered = 0;
             var uncovered = 0;
-            var absoluteFile = path.resolve(file);
+            var absoluteFile = path.resolve(file)
+            .substr(path.resolve(srcDir).length + 1)
+            .replace(/\\/g, '/');
             var lineCoverage = coverageInfo[absoluteFile];
             var fileLines = grunt.file.read(file).split(/\r?\n/);
             var lines = '<lines>';
